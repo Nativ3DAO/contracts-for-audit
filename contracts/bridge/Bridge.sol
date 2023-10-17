@@ -303,11 +303,22 @@ contract Bridge is Initializable, DelegateCallAware, IBridge {
         _gasToken = gasToken_;
     }
 
-    function scaleBaseFeeL1(uint256 fee) internal view returns (uint256) {
-        //Arbiturm Goerli price feed
-        IPriceFeed _priceFeed = IPriceFeed(address(0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08));
-        int256 price = _priceFeed.latestAnswer();
+    function scaleBaseFeeL1(uint256 fee) public view returns (uint256) {
+        IPriceFeed _priceFeed;
+        uint256 id = block.chainid;
+        if (id == 421613) {
+            //Arbiturm Goerli price feed
+            _priceFeed = IPriceFeed(address(0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08));
+        } else if (id == 42161) {
+            //Arbitrum Mainnet
+            _priceFeed = IPriceFeed(address(0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612));
+        } else {
+            revert("Error: Invalid chain id");
+        }
+
+        (, int256 price, , uint256 updatedAt, ) = _priceFeed.latestRoundData();
         require(price > 0, "Error: Invalid price");
+        require(updatedAt > block.timestamp - 2 hours, "Error: Invalid updated time");
         return (fee * uint256(price)) / (10 ** _priceFeed.decimals());
     }
 
